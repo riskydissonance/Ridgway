@@ -21,8 +21,21 @@ It will then inject some shellcode (hard coded so change before compiling) into 
 
 ### Example
 
-`Ridgway.exe C:\Windows\System32\notepad.exe 1337`
+`Ridgway.exe C:\Windows\syswow64\notepad.exe 1337`
+
+## Cobalt Strike
+
+There's an aggressor script **artifact.cna** which can be loaded into Cobalt Strike so that the generated Windows Executables use this executable.
+Note you need to keep the default shellcode of 'A's, and may need to change the path to the **encoded_payload.sh** script in the artifact.cna.
 
 ## Name
 
 For those interested it's named after Stan Ridgway, who sang [this belter](https://www.youtube.com/watch?v=VgRXdozljRs), as that's exactly what we're trying to do here.
+
+## TODO
+
+* [ ] Check 32/64 processes
+* [ ] Support compiling to 32 bit?
+* [ ] Do proper process hollowing
+* [ ] Check 32/64 bit payloads for CS
+* [ ] Tidy up aggressor script & don't rely on msfvenom.

@@ -1,2 +1,8 @@
 .vs/
 x64/
+Debug/
+Release/
+Ridgway/Debug/
+Ridgway/Release/
+Ridgway/x64/
+Ridgway.sln.DotSettings.user
