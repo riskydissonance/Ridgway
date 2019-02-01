@@ -12,13 +12,13 @@ BOOL GetDebugPrivilege()
 		LUID privilegeLuid;
 
 		// Get the LUID for the debug priv
-		if (!LookupPrivilegeValue(NULL, _T("SeDebugPrivilege"), &privilegeLuid)) {
+		if (!LookupPrivilegeValue(nullptr, _T("SeDebugPrivilege"), &privilegeLuid)) {
 			CloseHandle(currentTokenHandle);
 			return FALSE;
 		}
 
 		// Get the size of the struct by passing NULL for the information to be written to
-		GetTokenInformation(currentTokenHandle, TokenPrivileges, NULL, 0, &informationLength);
+		GetTokenInformation(currentTokenHandle, TokenPrivileges, nullptr, 0, &informationLength);
 
 		// Get enough memory based on the returned length 
 		PTOKEN_PRIVILEGES processTokenPrivs = (PTOKEN_PRIVILEGES)malloc(informationLength);
@@ -57,7 +57,7 @@ BOOL GetDebugPrivilege()
 		newTokenPrivs.PrivilegeCount = 1;
 		newTokenPrivs.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
 		// Set the change on our token
-		if (!AdjustTokenPrivileges(currentTokenHandle, FALSE, &newTokenPrivs, sizeof(newTokenPrivs), NULL, NULL))
+		if (!AdjustTokenPrivileges(currentTokenHandle, FALSE, &newTokenPrivs, sizeof(newTokenPrivs), nullptr, nullptr))
 		{
 			CloseHandle(currentTokenHandle);
 			return FALSE;
@@ -73,12 +73,12 @@ HANDLE GetParentProcessHandle(int parentProcessId)
 {
 	HANDLE parentProcessHandle = OpenProcess(PROCESS_ALL_ACCESS, FALSE, parentProcessId);
 	// TODO check if process is for current user and if not ask for debug priv
-	if (NULL == parentProcessHandle)
+	if (nullptr == parentProcessHandle)
 	{
 		_tprintf(TEXT("[*] Could not get handle, trying to get debug privilege to retry...\n"));
 		if (!GetDebugPrivilege())
 		{
-			return NULL;
+			return nullptr;
 		}
 		parentProcessHandle = OpenProcess(PROCESS_ALL_ACCESS, FALSE, parentProcessId);
 	}
@@ -89,26 +89,26 @@ PPROC_THREAD_ATTRIBUTE_LIST GetParentAttributeList(HANDLE &parentProcessHandle)
 {
 	SIZE_T attributeListSize = 0;
 	// Pass null to get the size of the attribute list
-	InitializeProcThreadAttributeList(NULL, 1, 0, &attributeListSize);
+	InitializeProcThreadAttributeList(nullptr, 1, 0, &attributeListSize);
 
 	// Allocate space for it
 	PPROC_THREAD_ATTRIBUTE_LIST parentAttributeList = (PPROC_THREAD_ATTRIBUTE_LIST)HeapAlloc(GetProcessHeap(), 0, attributeListSize);
-	if (NULL == parentAttributeList)
+	if (nullptr == parentAttributeList)
 	{
 		DisplayErrorMessage(TEXT("HeapAlloc error"), GetLastError());
-		return NULL;
+		return nullptr;
 	}
 	// Create the attribute list
 	if (!InitializeProcThreadAttributeList(parentAttributeList, 1, 0, &attributeListSize))
 	{
 		DisplayErrorMessage(TEXT("InitializeProcThreadAttributeList error"), GetLastError());
-		return NULL;
+		return nullptr;
 	}
 	// Update it with the parent process attribute using the parent process handle
-	if (!UpdateProcThreadAttribute(parentAttributeList, 0, PROC_THREAD_ATTRIBUTE_PARENT_PROCESS, &parentProcessHandle, sizeof(HANDLE), NULL, NULL))
+	if (!UpdateProcThreadAttribute(parentAttributeList, 0, PROC_THREAD_ATTRIBUTE_PARENT_PROCESS, &parentProcessHandle, sizeof(HANDLE), nullptr, nullptr))
 	{
 		DisplayErrorMessage(TEXT("UpdateProcThreadAttribute error"), GetLastError());
-		return NULL;
+		return nullptr;
 	}
 	return parentAttributeList;
 }
@@ -126,14 +126,14 @@ PROCESS_INFORMATION StartProcessSuspended(_TCHAR* processName, int parentProcess
 	// Get a handle on the parent process
 	HANDLE parentProcessHandle = GetParentProcessHandle(parentProcessId);
 
-	if (NULL == parentProcessHandle) { return processInfo; }
+	if (nullptr == parentProcessHandle) { return processInfo; }
 
 	STARTUPINFOEX startupInfo = { sizeof(startupInfo) };
 
 	// Get the attribute list from the parent process
 	PPROC_THREAD_ATTRIBUTE_LIST parentAttributeList = GetParentAttributeList(parentProcessHandle);
 
-	if (parentAttributeList == NULL)
+	if (parentAttributeList == nullptr)
 	{
 		DisplayErrorMessage(TEXT("Error getting attributes from parent process"), GetLastError());
 		return processInfo;
@@ -143,7 +143,7 @@ PROCESS_INFORMATION StartProcessSuspended(_TCHAR* processName, int parentProcess
 	startupInfo.lpAttributeList = parentAttributeList;
 
 	// Create the process
-	if (!CreateProcess(NULL, processName, NULL, NULL, FALSE, EXTENDED_STARTUPINFO_PRESENT | CREATE_SUSPENDED, NULL, NULL, &startupInfo.StartupInfo, &processInfo))
+	if (!CreateProcess(nullptr, processName, nullptr, nullptr, FALSE, EXTENDED_STARTUPINFO_PRESENT | CREATE_SUSPENDED, nullptr, nullptr, &startupInfo.StartupInfo, &processInfo))
 	{
 		DisplayErrorMessage(TEXT("CreateProcess error"), GetLastError());
 		return processInfo;
