@@ -1,5 +1,7 @@
 #pragma once
 #include "Ridgway.h"
+#include "Restart.h"
+
 BOOL GetDebugPrivilege()
 {
 	HANDLE currentTokenHandle;
@@ -30,11 +32,10 @@ BOOL GetDebugPrivilege()
 			return FALSE;
 		}
 
-		PLUID_AND_ATTRIBUTES runner;
 		bool seDebugAvailable = false;
 		// Iterate over the privs and check for the debug priv LUID
 		for (DWORD x = 0; x < processTokenPrivs->PrivilegeCount; x++) {
-			runner = &processTokenPrivs->Privileges[x];
+			const PLUID_AND_ATTRIBUTES runner = &processTokenPrivs->Privileges[x];
 			if ((runner->Luid.LowPart == privilegeLuid.LowPart) && (runner->Luid.HighPart == privilegeLuid.HighPart)) {
 				_tprintf(_T("[+] SeDebugPrivilege available!\n"));
 				seDebugAvailable = true;
@@ -45,6 +46,7 @@ BOOL GetDebugPrivilege()
 		if (!seDebugAvailable) {
 			_tprintf(_T("[-] SeDebugPrivilege unavailable\n[-] Please run with Privileges!\n"));
 			CloseHandle(currentTokenHandle);
+			RelaunchSelf();
 			return FALSE;
 		}
 

