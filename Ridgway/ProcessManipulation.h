@@ -1,4 +1,5 @@
 #pragma once
+#include <tchar.h>
 #include <windows.h>
 #include <tlhelp32.h>
 
@@ -77,28 +78,42 @@ BOOL GetDebugPrivilege()
 
 HANDLE GetParentProcessHandle(int parentProcessId)
 {
-	HANDLE parentProcessHandle = OpenProcess(PROCESS_ALL_ACCESS, FALSE, parentProcessId);
+	DebugPrint(TEXT("[*] Getting handle on parent process: %d\n"), parentProcessId);
+	auto parentProcessHandle = OpenProcess(PROCESS_ALL_ACCESS, FALSE, parentProcessId);
 	// TODO check if process is for current user and if not ask for debug priv
 	if (nullptr == parentProcessHandle)
 	{
 		DebugPrint(TEXT("[*] Could not get handle, trying to get debug privilege to retry...\n"));
 		if (!GetDebugPrivilege())
 		{
+			DebugPrint(TEXT("[-] Unable to get debug privilege. \n"));
 			return nullptr;
 		}
+		DebugPrint(TEXT("[*] Got debug privilege\n"));
+		
 		parentProcessHandle = OpenProcess(PROCESS_ALL_ACCESS, FALSE, parentProcessId);
+		if(nullptr != parentProcessHandle)
+		{
+			DebugPrint(TEXT("[+] Opened process\n"));
+		}
+		else
+		{
+			DebugPrint(TEXT("[-] Failed to open process\n"));
+		}
+		
 	}
 	return parentProcessHandle;
 }
 
 PPROC_THREAD_ATTRIBUTE_LIST GetParentAttributeList(HANDLE &parentProcessHandle)
 {
+	DebugPrint(TEXT("[*] Getting attribute list from parent process\n"));
 	SIZE_T attributeListSize = 0;
 	// Pass null to get the size of the attribute list
 	InitializeProcThreadAttributeList(nullptr, 1, 0, &attributeListSize);
 
 	// Allocate space for it
-	PPROC_THREAD_ATTRIBUTE_LIST parentAttributeList = (PPROC_THREAD_ATTRIBUTE_LIST)HeapAlloc(GetProcessHeap(), 0, attributeListSize);
+	const auto parentAttributeList = (PPROC_THREAD_ATTRIBUTE_LIST)HeapAlloc(GetProcessHeap(), 0, attributeListSize);
 	if (nullptr == parentAttributeList)
 	{
 		DisplayErrorMessage(TEXT("HeapAlloc error"), GetLastError());
@@ -116,14 +131,16 @@ PPROC_THREAD_ATTRIBUTE_LIST GetParentAttributeList(HANDLE &parentProcessHandle)
 		DisplayErrorMessage(TEXT("UpdateProcThreadAttribute error"), GetLastError());
 		return nullptr;
 	}
+	DebugPrint(TEXT("[+] Got attribute list\n"));
 	return parentAttributeList;
 }
 
 int GetExplorerPid()
 {
+	DebugPrint(TEXT("[*] Getting explorer PID as process ID\n"));
 	WCHAR targetProcessName[] = L"explorer.exe";
 
-	auto snap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0); 
+	auto* snap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0); 
 
 	PROCESSENTRY32W entry;
 	entry.dwSize = sizeof entry;
@@ -138,7 +155,8 @@ int GetExplorerPid()
 			DebugPrint(TEXT("[+] Found parent PID: %d\n"), entry.th32ProcessID);
 			return entry.th32ProcessID;
 		}
-	} while (Process32NextW(snap, &entry)); 
+	} while (Process32NextW(snap, &entry));
+	DebugPrint(TEXT("[-] Parent process not found: %s\n"), targetProcessName);
 	return 0;
 }
 
@@ -147,9 +165,7 @@ PROCESS_INFORMATION StartProcessSuspended(_TCHAR* processName, int parentProcess
 	auto processInfo = PROCESS_INFORMATION();
 	if (parentProcessId == -1)
 	{
-		DebugPrint(TEXT("[*] Getting explorer PID as process ID\n"));
 		parentProcessId = GetExplorerPid();
-		DebugPrint(TEXT("[+] Got: %d\n"), parentProcessId);
 	}
 
 	// Get a handle on the parent process
@@ -161,7 +177,7 @@ PROCESS_INFORMATION StartProcessSuspended(_TCHAR* processName, int parentProcess
 		return processInfo;
 	}
 
-	DebugPrint((TEXT("[+] Opened handle to parent process\n")));
+	DebugPrint(TEXT("[+] Opened handle to parent process\n"));
 
 	STARTUPINFOEX startupInfo = { sizeof(startupInfo) };
 
@@ -185,10 +201,11 @@ PROCESS_INFORMATION StartProcessSuspended(_TCHAR* processName, int parentProcess
 		DisplayErrorMessage(TEXT("CreateProcess error"), GetLastError());
 		return processInfo;
 	}
-	DebugPrint(TEXT("Process created: %d\n"), processInfo.dwProcessId);
+	DebugPrint(TEXT("[+] Process created: %d\n"), processInfo.dwProcessId);
 
 	// Cleanup
 	DeleteProcThreadAttributeList(parentAttributeList);
 	CloseHandle(parentProcessHandle);
+	DebugPrint(TEXT("[+] Cleanup successful\n"));
 	return processInfo;
 }

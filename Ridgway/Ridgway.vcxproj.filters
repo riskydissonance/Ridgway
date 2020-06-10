@@ -8,9 +8,6 @@
     <ClInclude Include="Internals.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="ParentProcessManipulation.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Restart.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -24,6 +21,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="targetver.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ProcessManipulation.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

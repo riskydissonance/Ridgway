@@ -6,6 +6,7 @@
 
 void RelaunchSelf(void) {
 
+	DebugPrint(TEXT("[*] Relaunching using runas.exe to escalate privileges\n"));
 	SHELLEXECUTEINFO info;
 	WCHAR fileName[MAXFILEPATHLEN];
 	DWORD pathLen = MAXFILEPATHLEN;

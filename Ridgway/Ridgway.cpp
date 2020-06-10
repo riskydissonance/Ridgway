@@ -3,13 +3,13 @@
 
 #include "stdafx.h"
 #include "ShellcodeInjection.h"
-#include "ParentProcessManipulation.h"
+#include "ProcessManipulation.h"
 #include "Ridgway.h"
 
 
 int CreateRemoteThread(_TCHAR* processName, int parentProcessId)
 {
-	PROCESS_INFORMATION processInfo = StartProcessSuspended(processName, parentProcessId);
+	const auto processInfo = StartProcessSuspended(processName, parentProcessId);
 
 	if (processInfo.dwProcessId == NULL) {
 		return 1;
