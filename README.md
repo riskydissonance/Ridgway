@@ -12,12 +12,9 @@ It will then inject some shellcode (hard coded so change before compiling) into 
 
 ## Usage
 
-`Ridgway.exe <process path> <parentProcessId> [injectMethod]`
+`Ridgway.exe <process path> <parentProcessId>`
 
-**injectMethod** is an optional parameter of one of the follwing:
-
-* `1`: uses `CreateRemoteThread` (default)
-* `2`: WIP
+Without arguments the binary uses C:\Program Files (x86)\Internet Explorer\iexplore.exe and uses explorer.exe as the parent.
 
 ### Example
 
@@ -31,11 +28,3 @@ Note you need to keep the default shellcode of 'A's, and may need to change the 
 ## Name
 
 For those interested it's named after Stan Ridgway, who sang [this belter](https://www.youtube.com/watch?v=VgRXdozljRs), as that's exactly what we're trying to do here.
-
-## TODO
-
-* [ ] Check 32/64 processes
-* [ ] Support compiling to 32 bit?
-* [ ] Do proper process hollowing
-* [ ] Check 32/64 bit payloads for CS
-* [ ] Tidy up aggressor script & don't rely on msfvenom.
